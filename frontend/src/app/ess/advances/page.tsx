@@ -5,12 +5,12 @@ import ESSLayout from '@/components/layout/ESSLayout';
 import { api } from '@/lib/api';
 import { useAuthStore } from '@/store/auth.store';
 import { formatCurrency } from '@/lib/utils';
-
+ 
 const STATUS: Record<string,{bg:string;color:string}> = {
   PENDING:{bg:'#fdf3e0',color:'#c77700'}, APPROVED:{bg:'#e7f6ea',color:'#28a745'},
   REJECTED:{bg:'#fdecea',color:'#d83933'}, RECOVERED:{bg:'#f2f2f7',color:'#6e6e73'},
 };
-
+ 
 export default function ESSAdvances() {
   const { user } = useAuthStore();
   const qc = useQueryClient();
@@ -18,19 +18,19 @@ export default function ESSAdvances() {
   const [form, setForm] = useState({ amount:'', reason:'' });
   const s = (k:string,v:string) => setForm(p=>({...p,[k]:v}));
   const cur = user?.region==='INDIA'?'INR':'AED';
-
+ 
   const { data: advances=[], isLoading } = useQuery({ queryKey:['my-advances'], queryFn:()=>api.get('/advances?myAdvances=true').then(r=>r.data) });
   const { data: settings } = useQuery({ queryKey:['settings'], queryFn:()=>api.get('/settings').then(r=>r.data) });
   const maxAmount = (settings as any)?.maxAdvanceAmount || 50000;
-
+ 
   const createMut = useMutation({
     mutationFn: (dto:any) => api.post('/advances', dto).then(r=>r.data),
     onSuccess: () => { qc.invalidateQueries({queryKey:['my-advances']}); setShowForm(false); setForm({amount:'',reason:''}); },
     onError: (e:any) => alert(e?.response?.data?.message||'Request failed'),
   });
-
+ 
   const inp: React.CSSProperties = { width:'100%', padding:'9px 12px', border:'1px solid var(--line-2)', borderRadius:8, fontSize:13.5, fontFamily:'inherit', outline:'none', background:'var(--surface)', color:'var(--ink)' };
-
+ 
   return (
     <ESSLayout>
       <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:24 }}>
@@ -40,7 +40,7 @@ export default function ESSAdvances() {
         </div>
         {!showForm && <button onClick={()=>setShowForm(true)} style={{ padding:'9px 18px', background:'#0a84ff', color:'#fff', border:'none', borderRadius:8, fontSize:13.5, fontWeight:600, cursor:'pointer', fontFamily:'inherit' }}>Request advance</button>}
       </div>
-
+ 
       {showForm && (
         <div style={{ background:'var(--surface)', border:'1px solid var(--line)', borderRadius:12, padding:24, marginBottom:20 }}>
           <div style={{ fontSize:15, fontWeight:600, color:'var(--ink)', marginBottom:18 }}>New advance request</div>
@@ -62,8 +62,9 @@ export default function ESSAdvances() {
           </div>
         </div>
       )}
-
-      <div style={{ background:'var(--surface)', border:'1px solid var(--line)', borderRadius:12, overflow:'hidden' }}><div className="table-scroll">
+ 
+      <div style={{ background:'var(--surface)', border:'1px solid var(--line)', borderRadius:12, overflow:'hidden' }}>
+        <div className="table-scroll">
         {isLoading ? <div style={{ padding:40, textAlign:'center', color:'var(--ink-3)' }}>Loading…</div>
         : (advances as any[]).length===0 ? (
           <div style={{ padding:48, textAlign:'center' }}>
@@ -90,8 +91,9 @@ export default function ESSAdvances() {
                 </tr>
               ))}
             </tbody>
-          </table></div>
+          </table>
         )}
+      </div>
       </div>
     </ESSLayout>
   );

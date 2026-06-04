@@ -5,7 +5,7 @@ import ESSLayout from '@/components/layout/ESSLayout';
 import { api } from '@/lib/api';
 import { useAuthStore } from '@/store/auth.store';
 import { formatCurrency } from '@/lib/utils';
-
+ 
 const STATUS: Record<string,{bg:string;color:string}> = {
   PENDING:  {bg:'#fdf3e0',color:'#c77700'},
   APPROVED: {bg:'#e7f6ea',color:'#28a745'},
@@ -13,14 +13,14 @@ const STATUS: Record<string,{bg:string;color:string}> = {
   ACTIVE:   {bg:'#e8f1fe',color:'#0a84ff'},
   CLOSED:   {bg:'#f2f2f7',color:'#6e6e73'},
 };
-
+ 
 export default function ESSLoans() {
   const { user } = useAuthStore();
   const qc = useQueryClient();
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({ amount:'', months:'12', reason:'' });
   const s = (k:string,v:string) => setForm(p=>({...p,[k]:v}));
-
+ 
   const { data: loans=[], isLoading } = useQuery({
     queryKey: ['my-loans'],
     queryFn: () => api.get('/loans', { params: { myLoans: 'true' } }).then(r=>r.data),
@@ -29,15 +29,15 @@ export default function ESSLoans() {
   const maxAmount = (settings as any)?.maxLoanAmount || 100000;
   const maxMonths = (settings as any)?.maxInstallments || 24;
   const cur = user?.region === 'INDIA' ? 'INR' : 'AED';
-
+ 
   const createMut = useMutation({
     mutationFn: (dto:any) => api.post('/loans', dto).then(r=>r.data),
     onSuccess: () => { qc.invalidateQueries({queryKey:['my-loans']}); setShowForm(false); setForm({amount:'',months:'12',reason:''}); },
     onError: (e:any) => alert(e?.response?.data?.message || 'Request failed'),
   });
-
+ 
   const inp: React.CSSProperties = { width:'100%', padding:'9px 12px', border:'1px solid var(--line-2)', borderRadius:8, fontSize:13.5, fontFamily:'inherit', outline:'none', background:'var(--surface)', color:'var(--ink)' };
-
+ 
   return (
     <ESSLayout>
       <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:24 }}>
@@ -47,7 +47,7 @@ export default function ESSLoans() {
         </div>
         {!showForm && <button onClick={()=>setShowForm(true)} style={{ padding:'9px 18px', background:'#0a84ff', color:'#fff', border:'none', borderRadius:8, fontSize:13.5, fontWeight:600, cursor:'pointer', fontFamily:'inherit' }}>Apply for loan</button>}
       </div>
-
+ 
       {/* Apply form */}
       {showForm && (
         <div style={{ background:'var(--surface)', border:'1px solid var(--line)', borderRadius:12, padding:24, marginBottom:20 }}>
@@ -79,9 +79,10 @@ export default function ESSLoans() {
           </div>
         </div>
       )}
-
+ 
       {/* Loans list */}
-      <div style={{ background:'var(--surface)', border:'1px solid var(--line)', borderRadius:12, overflow:'hidden' }}><div className="table-scroll">
+      <div style={{ background:'var(--surface)', border:'1px solid var(--line)', borderRadius:12, overflow:'hidden' }}>
+        <div className="table-scroll">
         {isLoading ? (
           <div style={{ padding:'40px', textAlign:'center', color:'var(--ink-3)' }}>Loading…</div>
         ) : (loans as any[]).length === 0 ? (
@@ -112,8 +113,9 @@ export default function ESSLoans() {
                 </tr>
               ))}
             </tbody>
-          </table></div>
+          </table>
         )}
+      </div>
       </div>
     </ESSLayout>
   );
