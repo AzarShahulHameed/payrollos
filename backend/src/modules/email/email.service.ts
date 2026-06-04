@@ -134,5 +134,20 @@ export class EmailService {
       </div>`;
     return this.send(to, 'Reset your PayrollOS password', html);
   }
-}
  
+  async sendPayrunReminder(to: string, orgName: string, period: string, daysLeft: number) {
+    const appUrl = this.config.get('APP_URL', 'http://localhost:3000');
+    const subject = 'Payrun reminder: ' + period + ' — ' + daysLeft + ' day' + (daysLeft !== 1 ? 's' : '') + ' left';
+    const html = '<div style="font-family:-apple-system,sans-serif;max-width:560px;margin:0 auto;background:#fff;border-radius:14px;overflow:hidden;border:1px solid #e3e3e6">'
+      + '<div style="background:linear-gradient(135deg,#ff9500,#c77700);padding:32px;text-align:center;color:#fff">'
+      + '<div style="font-size:22px;font-weight:700;margin-bottom:6px">Payrun reminder</div>'
+      + '<div style="opacity:.8;font-size:14px">' + orgName + '</div></div>'
+      + '<div style="padding:32px">'
+      + '<p style="color:#48484a;font-size:14px;line-height:1.6;margin-bottom:24px">The payrun for <strong>' + period + '</strong> is due in <strong>' + daysLeft + ' day' + (daysLeft !== 1 ? 's' : '') + '</strong>. Please process it before the pay date.</p>'
+      + '<div style="text-align:center">'
+      + '<a href="' + appUrl + '/payrun" style="display:inline-block;background:#ff9500;color:#fff;font-size:14px;font-weight:600;padding:13px 32px;border-radius:10px;text-decoration:none">Go to Payrun</a>'
+      + '</div></div></div>';
+    return this.send(to, subject, html);
+  }
+ 
+}
