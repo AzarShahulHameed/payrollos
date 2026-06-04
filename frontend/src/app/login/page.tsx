@@ -4,7 +4,7 @@ import { useRouter } from 'next/navigation';
 import { authApi } from '@/lib/api';
 import { useAuthStore } from '@/store/auth.store';
 import { useRegionStore } from '@/store/auth.store';
-
+ 
 export default function LoginPage() {
   const router = useRouter();
   const { setAuth } = useAuthStore();
@@ -12,19 +12,19 @@ export default function LoginPage() {
   const [mode, setMode] = useState<'login' | 'register'>('login');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-
+ 
   const [form, setForm] = useState({
     orgName: '', email: '', password: '',
     firstName: '', lastName: '', region: 'UAE',
   });
   const set = (k: string, v: string) => setForm(f => ({ ...f, [k]: v }));
-
+ 
   const handleSubmit = async () => {
     setError(''); setLoading(true);
     try {
       let res: any;
       if (mode === 'login') {
-        res = await authApi.login({ email: form.email, password: form.password, orgSlug: '' });
+        res = await authApi.login({ email: form.email, password: form.password });
       } else {
         if (!form.orgName || !form.email || !form.password || !form.firstName || !form.lastName) {
           setError('All fields are required'); setLoading(false); return;
@@ -40,7 +40,7 @@ export default function LoginPage() {
       setLoading(false);
     }
   };
-
+ 
   return (
     <div style={{
       minHeight: '100vh', background: '#f5f5f7',
@@ -61,7 +61,7 @@ export default function LoginPage() {
             {mode === 'login' ? 'Sign in to your account' : 'Create your organization'}
           </div>
         </div>
-
+ 
         {/* Mode tabs */}
         <div style={{
           display: 'flex', background: '#f5f5f7', borderRadius: 10,
@@ -81,7 +81,7 @@ export default function LoginPage() {
             </button>
           ))}
         </div>
-
+ 
         {/* Fields */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           {mode === 'register' && (
@@ -102,17 +102,17 @@ export default function LoginPage() {
               </div>
             </>
           )}
-
+ 
           <Field label="Email" type="email" value={form.email} onChange={v => set('email', v)} placeholder="you@company.com" />
           <Field label="Password" type="password" value={form.password} onChange={v => set('password', v)} placeholder={mode === 'register' ? 'Min 6 characters' : 'Your password'} />
         </div>
-
+ 
         {error && (
           <div style={{ marginTop: 14, padding: '10px 12px', background: '#fff2f2', borderRadius: 8, border: '1px solid #ffd0d0', fontSize: 13, color: '#c0392b' }}>
             {error}
           </div>
         )}
-
+ 
         <button
           onClick={handleSubmit}
           disabled={loading}
@@ -126,7 +126,7 @@ export default function LoginPage() {
         >
           {loading ? 'Please wait...' : mode === 'login' ? 'Sign in' : 'Create account'}
         </button>
-
+ 
         <p style={{ marginTop: 20, textAlign: 'center', fontSize: 12, color: '#86868b' }}>
           {mode === 'login' ? "Don't have an account? " : 'Already have an account? '}
           <span onClick={() => { setMode(mode === 'login' ? 'register' : 'login'); setError(''); }}
@@ -138,14 +138,14 @@ export default function LoginPage() {
     </div>
   );
 }
-
+ 
 const inputStyle: React.CSSProperties = {
   width: '100%', padding: '8px 10px',
   border: '1px solid #d2d2d7', borderRadius: 8,
   fontSize: 13, color: '#1d1d1f', background: 'white',
   outline: 'none', boxSizing: 'border-box',
 };
-
+ 
 function Field({ label, value, onChange, type = 'text', placeholder }: any) {
   return (
     <div>

@@ -11,7 +11,7 @@ import * as crypto from 'crypto';
 import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
 import { PassportModule } from '@nestjs/passport';
-import { IsEmail, IsString, MinLength } from 'class-validator';
+import { IsEmail, IsString, IsOptional, MinLength } from 'class-validator';
 import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { PrismaService } from '../../common/prisma/prisma.module';
@@ -284,7 +284,7 @@ class RegisterDto {
   @IsString() lastName: string;
   @IsString() region: string;
 }
-class LoginDto   { @IsEmail() email: string; @IsString() @MinLength(6) password: string; }
+class LoginDto   { @IsEmail() email: string; @IsString() @MinLength(6) password: string; @IsOptional() @IsString() orgSlug?: string; }
 class RefreshDto { @IsString() refreshToken: string; }
 class TwoFADto   { @IsString() token: string; }
  
