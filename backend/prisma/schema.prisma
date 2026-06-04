@@ -1,0 +1,623 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Region {
+  UAE
+  INDIA
+}
+
+enum Role {
+  SUPER_ADMIN
+  ADMIN
+  HR
+  MANAGER
+  ACCOUNTANT
+  EMPLOYEE
+}
+
+enum EmploymentStatus {
+  ACTIVE
+  INACTIVE
+  TERMINATED
+  ON_LEAVE
+}
+
+enum Gender {
+  MALE
+  FEMALE
+  OTHER
+}
+
+enum TaxRegime {
+  NEW
+  OLD
+}
+
+enum CityType {
+  METRO
+  NON_METRO
+}
+
+enum PayrunStatus {
+  DRAFT
+  IN_REVIEW
+  APPROVED
+  PROCESSED
+  PAID
+  CANCELLED
+}
+
+enum PayslipStatus {
+  DRAFT
+  PROCESSED
+  PAID
+}
+
+enum LeaveStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  CANCELLED
+}
+
+enum LoanStatus {
+  PENDING
+  ACTIVE
+  CLOSED
+  REJECTED
+}
+
+enum AdvanceStatus {
+  PENDING
+  APPROVED
+  DEDUCTED
+  REJECTED
+}
+
+model Organization {
+  id        String   @id @default(uuid())
+  name      String
+  email     String?
+  phone     String?
+  address   String?
+  website   String?
+  taxId     String?
+  industry  String?
+  logoUrl   String?
+  region    String   @default("UAE")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  users       User[]
+  departments Department[]
+  employees   Employee[]
+  payruns     Payrun[]
+  payslips    Payslip[]
+  settings    PayrollSettings?
+  auditLogs       AuditLog[]
+  attendance      Attendance[]
+  shifts          Shift[]
+  reimbursements  Reimbursement[]
+  taxDeclarations TaxDeclaration[]
+  notifications   Notification[]
+  bonuses         Bonus[]
+  branches        Branch[]
+}
+
+model User {
+  id             String    @id @default(uuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  email          String
+  passwordHash   String
+  firstName      String
+  lastName       String
+  role           Role      @default(EMPLOYEE)
+  totpSecret     String?
+  twoFaEnabled   Boolean   @default(false)
+  lastLoginAt    DateTime?
+  photoUrl              String?
+  mustChangePassword    Boolean   @default(false)
+  passwordResetToken    String?
+  passwordResetExpiry   DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  refreshTokens RefreshToken[]
+  employee      Employee?
+
+  @@unique([email, organizationId])
+}
+
+model RefreshToken {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  token     String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+}
+
+model Department {
+  id             String   @id @default(uuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  name           String
+  managerId      String?
+  createdAt      DateTime @default(now())
+
+  employees Employee[]
+}
+
+model Employee {
+  id             String           @id @default(uuid())
+  employeeCode   String
+  firstName      String
+  lastName       String
+  email          String
+  phone          String?
+  photoUrl       String?
+  dob            DateTime?
+  gender         Gender?
+  nationality    String?
+  joiningDate    DateTime
+  designation    String
+  departmentId   String?
+  department     Department?      @relation(fields: [departmentId], references: [id])
+  status         EmploymentStatus @default(ACTIVE)
+  organizationId String
+  organization   Organization     @relation(fields: [organizationId], references: [id])
+  region         Region
+  userId         String?          @unique
+  user           User?            @relation(fields: [userId], references: [id])
+
+  emiratesId    String?
+  visaNo        String?
+  visaExpiry    DateTime?
+  passportNo    String?
+  passportExpiry DateTime?
+  iban          String?
+  bankAccount   String?
+  isUaeNational Boolean  @default(false)
+
+  panNumber    String?
+  aadharNumber String?
+  uanNumber    String?
+  esiNumber    String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  salaryStructure SalaryStructure?
+  payslips        Payslip[]
+  leaveRequests   LeaveRequest[]
+  leaveBalances   LeaveBalance[]
+  loanRequests    LoanRequest[]
+  advanceRequests AdvanceRequest[]
+  documents       EmployeeDocument[]
+  bonuses         Bonus[]
+  attendance      Attendance[]
+  reimbursements  Reimbursement[]
+  taxDeclarations TaxDeclaration[]
+  shiftId         String?
+  shift           Shift?           @relation(fields: [shiftId], references: [id])
+
+  branchId        String?
+  branch          Branch?   @relation(fields: [branchId], references: [id])
+
+  @@unique([employeeCode, organizationId])
+}
+
+model EmployeeDocument {
+  id             String       @id @default(uuid())
+  employeeId     String
+  employee       Employee     @relation(fields: [employeeId], references: [id])
+  organizationId String?
+  name           String
+  type           String       @default("OTHER")
+  category       String       @default("OTHER")
+  fileUrl        String
+  fileType       String?
+  fileSize       Int?
+  notes          String?
+  expiryDate     DateTime?
+  uploadedAt     DateTime     @default(now())
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+}
+
+model SalaryStructure {
+  id             String   @id @default(uuid())
+  employeeId     String   @unique
+  employee       Employee @relation(fields: [employeeId], references: [id])
+  organizationId String
+  effectiveFrom  DateTime @default(now())
+
+  basicSalary        Float?
+  housingAllowance   Float?
+  transportAllowance Float?
+  medicalAllowance   Float?
+  otherAllowances    Float?
+
+  ctcAnnual         Float?
+  basicPct          Float    @default(40)
+  hraPct            Float    @default(50)
+  cityType          CityType?
+  actualRentMonthly Float?
+  taxRegime         TaxRegime @default(NEW)
+
+  pfEnabled Boolean @default(true)
+  pfOptOut  Boolean @default(false)
+  esiEnabled Boolean @default(true)
+  ptEnabled Boolean @default(true)
+  lwfEnabled Boolean @default(false)
+  lwfState  String?
+
+  npsEmployee      Float?
+  sec123Investment Float?
+  sec126Premium    Float?
+  homeLoanInterest Float?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Payrun {
+  id             String       @id @default(uuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  name           String
+  month          Int
+  year           Int
+  region         Region
+  status         PayrunStatus @default(DRAFT)
+  totalGross     Float?
+  totalNet       Float?
+  totalDeductions Float?
+  employeeCount  Int?
+  processedAt    DateTime?
+  paidAt         DateTime?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  payslips Payslip[]
+
+  @@unique([organizationId, month, year, region])
+}
+
+model Payslip {
+  id             String        @id @default(uuid())
+  payrunId       String
+  payrun         Payrun        @relation(fields: [payrunId], references: [id])
+  employeeId     String
+  employee       Employee      @relation(fields: [employeeId], references: [id])
+  organizationId String
+  organization   Organization  @relation(fields: [organizationId], references: [id])
+  region         Region
+  month          Int
+  year           Int
+  status         PayslipStatus @default(DRAFT)
+
+  basicSalary        Float @default(0)
+  housingAllowance   Float @default(0)
+  transportAllowance Float @default(0)
+  medicalAllowance   Float @default(0)
+  otherAllowances    Float @default(0)
+  specialAllowance   Float @default(0)
+  overtimeAmount     Float @default(0)
+  bonusAmount        Float @default(0)
+  grossSalary        Float @default(0)
+
+  lopDays      Float @default(0)
+  lopDeduction Float @default(0)
+
+  pfEmployee      Float @default(0)
+  pfEmployer      Float @default(0)
+  esiEmployee     Float @default(0)
+  esiEmployer     Float @default(0)
+  professionalTax Float @default(0)
+  lwfEmployee     Float @default(0)
+  lwfEmployer     Float @default(0)
+  tdsAmount       Float @default(0)
+
+  gpssaEmployee Float @default(0)
+  gpssaEmployer Float @default(0)
+
+  loanDeduction    Float @default(0)
+  advanceDeduction Float @default(0)
+
+  totalDeductions Float @default(0)
+  netSalary       Float @default(0)
+  gratuityAccrual Float @default(0)
+
+  taxableIncome Float?
+  surcharge     Float?
+  cess          Float?
+
+  paidAt    DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+}
+
+model LeaveBalance {
+  id         String   @id @default(uuid())
+  employeeId String
+  employee   Employee @relation(fields: [employeeId], references: [id])
+  leaveType  String
+  year       Int
+  total      Float
+  used       Float    @default(0)
+  remaining  Float
+
+  @@unique([employeeId, leaveType, year])
+}
+
+model LeaveRequest {
+  id              String      @id @default(uuid())
+  employeeId      String
+  employee        Employee    @relation(fields: [employeeId], references: [id])
+  leaveType       String
+  startDate       DateTime
+  endDate         DateTime
+  days            Float
+  reason          String?
+  isPaid          Boolean     @default(true)
+  status          LeaveStatus @default(PENDING)
+  approvedById    String?
+  approvedAt      DateTime?
+  rejectionReason String?
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+}
+
+model LoanRequest {
+  id              String     @id @default(uuid())
+  employeeId      String
+  employee        Employee   @relation(fields: [employeeId], references: [id])
+  amount          Float
+  installments    Int
+  purpose         String?
+  status          LoanStatus @default(PENDING)
+  approvedById    String?
+  approvedAt      DateTime?
+  remainingAmount Float?
+  rejectionReason String?
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
+
+  installmentsList LoanInstallment[]
+}
+
+model LoanInstallment {
+  id            String      @id @default(uuid())
+  loanRequestId String
+  loanRequest   LoanRequest @relation(fields: [loanRequestId], references: [id])
+  month         Int
+  year          Int
+  amount        Float
+  status        String      @default("PENDING")
+  paidAt        DateTime?
+}
+
+model AdvanceRequest {
+  id              String        @id @default(uuid())
+  employeeId      String
+  employee        Employee      @relation(fields: [employeeId], references: [id])
+  amount          Float
+  reason          String?
+  status          AdvanceStatus @default(PENDING)
+  deductionMonth  Int?
+  deductionYear   Int?
+  approvedById    String?
+  approvedAt      DateTime?
+  rejectionReason String?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+}
+
+model PayrollSettings {
+  id             String   @id @default(uuid())
+  organizationId String   @unique
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  region         String   @default("UAE")
+  currency       String   @default("AED")
+  payDay         Int      @default(28)
+  defaultWorkingDays Int  @default(22)
+  overtimeEnabled   Boolean @default(false)
+  overtimeMultiplier Float  @default(1.5)
+
+  pfEnabled          Boolean @default(true)
+  pfEmployeePct      Float   @default(12)
+  pfEmployerPct      Float   @default(12)
+  pfWageCeiling      Float   @default(15000)
+  esiEnabled         Boolean @default(true)
+  esiEmployeePct     Float   @default(0.75)
+  esiEmployerCeiling Float   @default(21000)
+  ptEnabled          Boolean @default(true)
+  lwfEnabled         Boolean @default(false)
+  lwfState           String?
+  taxRegime          String  @default("NEW")
+
+  wpsEnabled      Boolean @default(true)
+  gratuityEnabled Boolean @default(true)
+  gpssaEnabled    Boolean @default(false)
+
+  leaveTypes       Json?
+  salaryComponents Json?
+
+  maxLoanAmount    Float?
+  maxInstallments  Int?
+  maxAdvanceAmount Float?
+
+  bankName           String?
+  wpsRoutingCode     String?
+
+  notifyPayrunDraft     Boolean @default(true)
+  notifyPayrunApproved  Boolean @default(true)
+  notifyPayslipReleased Boolean @default(true)
+  notifyLeaveApproval   Boolean @default(true)
+  notifyLoanApproval    Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model AuditLog {
+  id             String   @id @default(uuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  userId         String?
+  action         String
+  entity         String
+  entityId       String?
+  changes        Json?
+  createdAt      DateTime @default(now())
+}
+
+// ── Attendance ─────────────────────────────────────────────────
+model Attendance {
+  id             String   @id @default(uuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  employeeId     String
+  employee       Employee @relation(fields: [employeeId], references: [id])
+  date           DateTime @db.Date
+  checkIn        DateTime?
+  checkOut       DateTime?
+  hoursWorked    Float?
+  status         AttendanceStatus @default(PRESENT)
+  notes          String?
+  source         String   @default("MANUAL")
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@unique([employeeId, date])
+}
+
+enum AttendanceStatus {
+  PRESENT
+  ABSENT
+  HALF_DAY
+  HOLIDAY
+  WEEKEND
+  ON_LEAVE
+  LATE
+}
+
+// ── Shift ──────────────────────────────────────────────────────
+model Shift {
+  id             String   @id @default(uuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  name           String
+  startTime      String
+  endTime        String
+  workingHours   Float
+  isDefault      Boolean  @default(false)
+  createdAt      DateTime @default(now())
+
+  employees      Employee[]
+}
+
+// ── Reimbursement ──────────────────────────────────────────────
+model Reimbursement {
+  id             String   @id @default(uuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  employeeId     String
+  employee       Employee @relation(fields: [employeeId], references: [id])
+  category       String
+  amount         Float
+  description    String?
+  receiptUrl     String?
+  status         ReimbursementStatus @default(PENDING)
+  approvedById   String?
+  approvedAt     DateTime?
+  paymentMonth   Int?
+  paymentYear    Int?
+  rejectionReason String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
+enum ReimbursementStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  PAID
+}
+
+// ── Tax Declaration ────────────────────────────────────────────
+model TaxDeclaration {
+  id             String   @id @default(uuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  employeeId     String
+  employee       Employee @relation(fields: [employeeId], references: [id])
+  financialYear  String
+  regime         String   @default("NEW")
+  sec80C         Float    @default(0)
+  sec80D         Float    @default(0)
+  sec80G         Float    @default(0)
+  npsAmount      Float    @default(0)
+  homeLoanInt    Float    @default(0)
+  hraActualRent  Float    @default(0)
+  otherDeductions Float   @default(0)
+  status         String   @default("DRAFT")
+  submittedAt    DateTime?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@unique([employeeId, financialYear])
+}
+
+// ── ESS Notification ───────────────────────────────────────────
+model Notification {
+  id             String       @id @default(uuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  userId         String
+  title          String
+  message        String
+  type           String
+  read           Boolean      @default(false)
+  link           String?
+  createdAt      DateTime     @default(now())
+}
+
+// ── Bonus ───────────────────────────────────────────────────────
+model Bonus {
+  id             String   @id @default(uuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  employeeId     String
+  employee       Employee @relation(fields: [employeeId], references: [id])
+  type           String   @default("PERFORMANCE")
+  amount         Float
+  month          Int
+  year           Int
+  description    String?
+  status         String   @default("PENDING")
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
+// ── Branch ──────────────────────────────────────────────────────
+model Branch {
+  id             String       @id @default(uuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  name           String
+  region         Region       @default(UAE)
+  address        String?
+  phone          String?
+  isHQ           Boolean      @default(false)
+  createdAt      DateTime     @default(now())
+  employees      Employee[]
+}

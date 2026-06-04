@@ -1,0 +1,219 @@
+'use client';
+import { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import ESSLayout from '@/components/layout/ESSLayout';
+import { api } from '@/lib/api';
+import { useAuthStore } from '@/store/auth.store';
+import { formatCurrency } from '@/lib/utils';
+ 
+const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+ 
+// ── Payslip print popup ────────────────────────────────────────
+function printPayslip(s: any, empName: string, cur: string) {
+  const fmt = (v: number) => `${cur} ${(v||0).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}`;
+  const deductions = [
+    s.pfEmployee>0      ? ['PF (Employee)',   s.pfEmployee]      : null,
+    s.esiEmployee>0     ? ['ESI',             s.esiEmployee]     : null,
+    s.professionalTax>0 ? ['Professional Tax',s.professionalTax] : null,
+    s.tdsAmount>0       ? ['TDS',             s.tdsAmount]       : null,
+    s.loanDeduction>0   ? ['Loan EMI',        s.loanDeduction]   : null,
+    s.advanceDeduction>0? ['Advance',         s.advanceDeduction]: null,
+  ].filter(Boolean) as [string,number][];
+ 
+  const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"/>
+  <title>Payslip ${MONTHS[(s.payrun?.month||1)-1]} ${s.payrun?.year}</title>
+  <style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:-apple-system,sans-serif;font-size:13px;color:#1d1d1f;background:#fff}
+  .page{max-width:640px;margin:0 auto;padding:40px}
+  .header{display:flex;justify-content:space-between;align-items:flex-start;padding-bottom:20px;border-bottom:2px solid #1d1d1f;margin-bottom:20px}
+  .period{font-size:11px;font-weight:700;color:#0a84ff;text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px}
+  .name{font-size:20px;font-weight:700;margin-bottom:4px}.sub{font-size:12px;color:#6e6e73}
+  .net{background:#0a84ff;color:#fff;border-radius:10px;padding:16px 20px;margin-bottom:20px;display:flex;justify-content:space-between;align-items:center}
+  .net .label{font-size:11px;opacity:.75;text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px}
+  .net .amount{font-size:26px;font-weight:800}.badge{background:rgba(255,255,255,.2);padding:4px 12px;border-radius:999px;font-size:12px;font-weight:600}
+  .section{margin-bottom:20px}.section-title{font-size:10px;font-weight:700;color:#a1a1a6;text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid #e3e3e6}
+  .row{display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #f5f5f7;font-size:13px}
+  .row:last-child{border:none}.row .lbl{color:#48484a}.row .val{font-variant-numeric:tabular-nums;font-weight:500}
+  .total{border-top:1.5px solid #1d1d1f!important;margin-top:6px;padding-top:8px!important;font-weight:700;font-size:14px}
+  .deduct{color:#d83933}.earn-total{color:#28a745}
+  .footer{margin-top:32px;padding-top:14px;border-top:1px solid #e3e3e6;font-size:11px;color:#a1a1a6;display:flex;justify-content:space-between}
+  @media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact}}</style></head>
+  <body><div class="page">
+  <div class="header">
+    <div>
+      <div class="period">Payslip · ${MONTHS[(s.payrun?.month||1)-1]} ${s.payrun?.year}</div>
+      <div class="name">${empName}</div>
+    </div>
+  </div>
+  <div class="net">
+    <div><div class="label">Net pay</div><div class="amount">${fmt(s.netSalary)}</div></div>
+    <div class="badge">${s.status}</div>
+  </div>
+  <div class="section"><div class="section-title">Earnings</div>
+    ${s.basicSalary>0?`<div class="row"><span class="lbl">Basic salary</span><span class="val">${fmt(s.basicSalary)}</span></div>`:''}
+    ${s.housingAllowance>0?`<div class="row"><span class="lbl">Housing allowance</span><span class="val">${fmt(s.housingAllowance)}</span></div>`:''}
+    ${s.transportAllowance>0?`<div class="row"><span class="lbl">Transport allowance</span><span class="val">${fmt(s.transportAllowance)}</span></div>`:''}
+    ${s.medicalAllowance>0?`<div class="row"><span class="lbl">Medical allowance</span><span class="val">${fmt(s.medicalAllowance)}</span></div>`:''}
+    ${s.bonusAmount>0?`<div class="row"><span class="lbl">Bonus</span><span class="val">${fmt(s.bonusAmount)}</span></div>`:''}
+    ${s.lopDays>0?`<div class="row"><span class="lbl deduct">LOP (${s.lopDays} days)</span><span class="val deduct">−${fmt(s.lopDeduction)}</span></div>`:''}
+    <div class="row total"><span>Gross salary</span><span class="val earn-total">${fmt(s.grossSalary)}</span></div>
+  </div>
+  ${deductions.length>0?`<div class="section"><div class="section-title">Deductions</div>
+    ${deductions.map(([l,v])=>`<div class="row"><span class="lbl">${l}</span><span class="val deduct">−${fmt(v)}</span></div>`).join('')}
+    <div class="row total"><span>Total deductions</span><span class="val deduct">−${fmt(s.totalDeductions)}</span></div>
+  </div>`:''}
+  <div class="footer">
+    <span>Generated by PayrollOS · ${new Date().toLocaleDateString('en-GB',{day:'2-digit',month:'long',year:'numeric'})}</span>
+    <span>Computer-generated · no signature required</span>
+  </div>
+  </div><script>window.onload=()=>{window.print();window.onafterprint=()=>window.close();}</script>
+  </body></html>`;
+  const w = window.open('','_blank','width=780,height=900');
+  if (w) { w.document.write(html); w.document.close(); }
+}
+ 
+// ── PIN Gate ──────────────────────────────────────────────────
+function PinGate({ onVerified }: { onVerified: () => void }) {
+  const { user } = useAuthStore();
+  const [pin, setPin] = useState('');
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
+ 
+  const handleVerify = async () => {
+    if (pin.length < 4) { setError('Enter your password to continue'); return; }
+    setLoading(true);
+    setError('');
+    try {
+      await api.post('/auth/verify-password', { password: pin });
+      onVerified();
+    } catch {
+      setError('Incorrect password. Please try again.');
+      setPin('');
+    } finally {
+      setLoading(false);
+    }
+  };
+ 
+  return (
+    <div style={{ display:'flex', alignItems:'center', justifyContent:'center', minHeight:'60vh' }}>
+      <div style={{ background:'var(--surface)', border:'1px solid var(--line)', borderRadius:16, padding:40, width:360, textAlign:'center', boxShadow:'var(--sh-md)' }}>
+        {/* Lock icon */}
+        <div style={{ width:64, height:64, borderRadius:'50%', background:'#e8f1fe', display:'flex', alignItems:'center', justifyContent:'center', margin:'0 auto 20px' }}>
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#0a84ff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+            <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+          </svg>
+        </div>
+ 
+        <div style={{ fontSize:18, fontWeight:700, color:'var(--ink)', marginBottom:6 }}>Verify your identity</div>
+        <div style={{ fontSize:13.5, color:'var(--ink-3)', marginBottom:24, lineHeight:1.5 }}>
+          Enter your password to view your payslips
+        </div>
+ 
+        <input
+          type="password"
+          value={pin}
+          onChange={e=>setPin(e.target.value)}
+          onKeyDown={e=>e.key==='Enter'&&handleVerify()}
+          placeholder="Enter your password"
+          autoFocus
+          style={{ width:'100%', padding:'11px 14px', border:`1px solid ${error?'#d83933':'var(--line-2)'}`, borderRadius:9, fontSize:15, fontFamily:'inherit', outline:'none', background:'var(--surface)', color:'var(--ink)', textAlign:'center', letterSpacing:'.05em', marginBottom:12 }}
+        />
+ 
+        {error && (
+          <div style={{ fontSize:13, color:'#d83933', marginBottom:12, fontWeight:500 }}>{error}</div>
+        )}
+ 
+        <button onClick={handleVerify} disabled={!pin||loading}
+          style={{ width:'100%', padding:'11px 0', background:'#0a84ff', color:'#fff', border:'none', borderRadius:9, fontSize:14, fontWeight:700, cursor:'pointer', fontFamily:'inherit', opacity:(!pin||loading)?.6:1, marginBottom:12 }}>
+          {loading ? 'Verifying…' : 'View payslips'}
+        </button>
+ 
+        <div style={{ fontSize:12, color:'var(--ink-4)' }}>
+          Your payslips contain confidential salary information
+        </div>
+      </div>
+    </div>
+  );
+}
+ 
+// ── Main page ──────────────────────────────────────────────────
+export default function ESSPayslips() {
+  const { user } = useAuthStore();
+  const [verified, setVerified] = useState(false);
+ 
+  const { data: slips = [], isLoading } = useQuery({
+    queryKey: ['my-slips'],
+    queryFn: () => api.get('/payslips/my').then(r => r.data),
+    enabled: verified,
+  });
+ 
+  const empName = `${user?.firstName||''} ${user?.lastName||''}`.trim();
+ 
+  return (
+    <ESSLayout>
+      {!verified ? (
+        <PinGate onVerified={() => setVerified(true)} />
+      ) : (
+        <>
+          <div style={{ marginBottom:24 }}>
+            <h1 style={{ fontSize:22, fontWeight:700, letterSpacing:'-.01em', color:'var(--ink)' }}>My payslips</h1>
+            <p style={{ fontSize:13.5, color:'var(--ink-3)', marginTop:4 }}>Your salary statements — confidential</p>
+          </div>
+ 
+          <div style={{ background:'var(--surface)', border:'1px solid var(--line)', borderRadius:14, overflow:'hidden', boxShadow:'var(--sh-sm)' }}><div className='table-scroll'>
+            <table style={{ width:'100%', borderCollapse:'collapse', fontSize:13.5 }}>
+              <thead><tr style={{ borderBottom:'1px solid var(--line)', background:'var(--bg)' }}>
+                {['Period','Gross','Deductions','Net pay','Status',''].map((h,i)=>(
+                  <th key={h} style={{ padding:'10px 20px', textAlign:i>=1&&i<=4?'right':i===5?'right':'left', fontSize:11, fontWeight:600, color:'var(--ink-3)', textTransform:'uppercase', letterSpacing:'.04em' }}>{h}</th>
+                ))}
+              </tr></thead>
+              <tbody>
+                {isLoading ? (
+                  <tr><td colSpan={6} style={{ padding:32, textAlign:'center', color:'var(--ink-3)' }}>Loading…</td></tr>
+                ) : (slips as any[]).length===0 ? (
+                  <tr><td colSpan={6} style={{ padding:'52px 24px', textAlign:'center' }}>
+                    <div style={{ fontSize:15, fontWeight:600, color:'var(--ink)', marginBottom:6 }}>No payslips yet</div>
+                    <div style={{ fontSize:13.5, color:'var(--ink-3)' }}>Your payslips will appear here once salary is processed</div>
+                  </td></tr>
+                ) : (slips as any[]).map((s:any)=>{
+                  const cur = s.region==='UAE'?'AED':'INR';
+                  return (
+                    <tr key={s.id} style={{ borderBottom:'1px solid var(--line)' }}
+                      onMouseEnter={e=>(e.currentTarget.style.background='var(--bg)')}
+                      onMouseLeave={e=>(e.currentTarget.style.background='')}>
+                      <td style={{ padding:'14px 20px', fontWeight:600, color:'var(--ink)' }}>
+                        {MONTHS[(s.payrun?.month||1)-1]} {s.payrun?.year}
+                      </td>
+                      <td style={{ padding:'14px 20px', textAlign:'right', color:'var(--ink-2)', fontVariantNumeric:'tabular-nums' }}>{formatCurrency(s.grossSalary||0,cur)}</td>
+                      <td style={{ padding:'14px 20px', textAlign:'right', color:'#d83933', fontVariantNumeric:'tabular-nums' }}>
+                        {(s.totalDeductions||0)>0 ? `−${formatCurrency(s.totalDeductions,cur)}` : '—'}
+                      </td>
+                      <td style={{ padding:'14px 20px', textAlign:'right', fontWeight:700, color:'var(--ink)', fontVariantNumeric:'tabular-nums' }}>{formatCurrency(s.netSalary||0,cur)}</td>
+                      <td style={{ padding:'14px 20px', textAlign:'right' }}>
+                        <span style={{ background:s.status==='PAID'?'#e7f6ea':'#f2f2f7', color:s.status==='PAID'?'#28a745':'#6e6e73', fontSize:11.5, fontWeight:600, padding:'3px 10px', borderRadius:999 }}>{s.status}</span>
+                      </td>
+                      <td style={{ padding:'14px 20px', textAlign:'right' }}>
+                        <button onClick={()=>printPayslip(s, empName, cur)}
+                          style={{ padding:'6px 14px', background:'#0a84ff', color:'#fff', border:'none', borderRadius:7, fontSize:12.5, fontWeight:600, cursor:'pointer', fontFamily:'inherit' }}>
+                          Print
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div></div>
+ 
+          {/* Re-lock button */}
+          <div style={{ marginTop:16, textAlign:'right' }}>
+            <button onClick={()=>setVerified(false)}
+              style={{ fontSize:13, color:'var(--ink-3)', background:'none', border:'none', cursor:'pointer', fontFamily:'inherit', textDecoration:'underline' }}>
+              Lock payslips
+            </button>
+          </div>
+        </>
+      )}
+    </ESSLayout>
+  );
+}
