@@ -433,6 +433,14 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                       <div style={{ height:1,background:T.border,margin:'4px 8px' }} />
                     </>
                   )}
+                  {(user?.role === 'ADMIN' || user?.role === 'HR') && (
+                    <Link href="/ess/dashboard" style={{ textDecoration:'none' }} onClick={()=>setUserMenu(false)}>
+                      <div style={{ display:'flex',alignItems:'center',gap:9,padding:'9px 12px',fontSize:13.5,color:T.ink,borderRadius:8,cursor:'pointer' }}
+                        onMouseEnter={e=>(e.currentTarget.style.background=T.hover)} onMouseLeave={e=>(e.currentTarget.style.background='transparent')}>
+                        <span style={{ fontSize:12 }}>👤</span> My employee portal
+                      </div>
+                    </Link>
+                  )}
                   <Link href="/change-password" style={{ textDecoration:'none' }} onClick={()=>setUserMenu(false)}>
                     <div style={{ display:'flex',alignItems:'center',gap:9,padding:'9px 12px',fontSize:13.5,color:T.ink,borderRadius:8,cursor:'pointer' }}
                       onMouseEnter={e=>(e.currentTarget.style.background=T.hover)} onMouseLeave={e=>(e.currentTarget.style.background='transparent')}>
@@ -482,3 +490,4 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     </div>
   );
 }
+ 

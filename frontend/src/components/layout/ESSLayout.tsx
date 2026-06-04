@@ -10,7 +10,7 @@ import {
 } from 'lucide-react';
 import { useAuthStore } from '@/store/auth.store';
 import { authApi } from '@/lib/api';
-
+ 
 const NAV = [
   { href:'/ess/dashboard',       label:'Dashboard',       icon:LayoutDashboard },
   { href:'/ess/payslips',        label:'Payslips',        icon:FileText        },
@@ -23,7 +23,7 @@ const NAV = [
   { href:'/ess/profile',         label:'Profile',         icon:User            },
   { href:'/ess/security',        label:'Security',        icon:Shield          },
 ];
-
+ 
 // Bottom tab nav items (most used — 5 max)
 const BOTTOM_NAV = [
   { href:'/ess/dashboard',  label:'Home',       icon:LayoutDashboard },
@@ -32,53 +32,55 @@ const BOTTOM_NAV = [
   { href:'/ess/attendance', label:'Attendance', icon:Clock           },
   { href:'/ess/profile',    label:'Profile',    icon:User            },
 ];
-
+ 
 const AV = ['#0a84ff','#28a745','#ff9500','#af52de','#ff375f'];
 const avColor = (n='') => AV[(n.charCodeAt(0)||0) % AV.length];
 const initials = (n='') => n.split(' ').map(w=>w[0]).filter(Boolean).slice(0,2).join('').toUpperCase();
-
+ 
 export default function ESSLayout({ children }: { children: React.ReactNode }) {
   const pathname  = usePathname();
   const router    = useRouter();
   const { user, isAuthenticated, logout, updateUser } = useAuthStore();
-
+ 
   const [hydrated, setHydrated] = useState(false);
   const [userMenu, setUserMenu] = useState(false);
   const [mobileMenu, setMobileMenu] = useState(false);
   const [dark, setDark] = useState(false);
-
+ 
   useEffect(() => {
     setHydrated(true);
     const saved = localStorage.getItem('payrollos-theme');
     setDark(saved === 'dark');
   }, []);
-
+ 
   useEffect(() => {
     if (!hydrated) return;
     document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
     localStorage.setItem('payrollos-theme', dark ? 'dark' : 'light');
   }, [dark, hydrated]);
-
+ 
   useEffect(() => {
     if (!hydrated) return;
     if (!isAuthenticated) { router.replace('/login'); return; }
-    if (user?.role === 'SUPER_ADMIN' || user?.role === 'ADMIN') router.replace('/dashboard');
+    // SUPER_ADMIN has no employee record — redirect to admin
+    // ADMIN and HR may have an employee record — allow ESS access
+    if (user?.role === 'SUPER_ADMIN') router.replace('/dashboard');
   }, [hydrated, isAuthenticated, user?.role]);
-
+ 
   // Close mobile menu on route change
   useEffect(() => { setMobileMenu(false); }, [pathname]);
-
+ 
   if (!hydrated || !isAuthenticated) return null;
-  if (user?.role === 'SUPER_ADMIN' || user?.role === 'ADMIN') return null;
-
+  if (user?.role === 'SUPER_ADMIN') return null;
+ 
   const name  = `${user?.firstName||''} ${user?.lastName||''}`.trim();
   const color = avColor(name);
-
+ 
   const handleLogout = async () => {
     try { await authApi.logout(); } catch {}
     logout(); router.replace('/login');
   };
-
+ 
   const T = {
     sidebar:      dark ? '#111113' : '#1a1f2e',
     sidebarB:     dark ? '#1e1e20' : '#242938',
@@ -97,19 +99,19 @@ export default function ESSLayout({ children }: { children: React.ReactNode }) {
     contentInk2:  dark ? '#aeaeb2' : '#48484a',
     contentBorder:dark ? '#3a3a3c' : '#e3e3e6',
   };
-
+ 
   const SidebarContent = () => (
     <>
       {/* Logo */}
       <div style={{ padding:'14px', borderBottom:`1px solid ${T.border}`, display:'flex', justifyContent:'center' }}>
         <div style={{ width:38,height:38,borderRadius:11,background:'linear-gradient(145deg,#0a84ff,#0055cc)',display:'grid',placeItems:'center',color:'#fff',fontWeight:800,fontSize:19 }}>P</div>
       </div>
-
+ 
       {/* Label */}
       <div style={{ padding:'10px 16px 6px' }}>
         <div style={{ fontSize:10, fontWeight:700, color:T.ink4, textTransform:'uppercase', letterSpacing:'.06em' }}>Employee Portal</div>
       </div>
-
+ 
       {/* Nav */}
       <nav style={{ flex:1, padding:'4px 8px', overflowY:'auto' }}>
         {NAV.map(({ href, label, icon:Icon }) => {
@@ -126,7 +128,7 @@ export default function ESSLayout({ children }: { children: React.ReactNode }) {
             </Link>
           );
         })}
-
+ 
         {user?.role !== 'EMPLOYEE' && (
           <Link href="/dashboard" style={{ textDecoration:'none' }}>
             <div style={{ display:'flex',alignItems:'center',gap:9,padding:'8px 10px',borderRadius:9,margin:'1px 0',cursor:'pointer' }}
@@ -139,7 +141,7 @@ export default function ESSLayout({ children }: { children: React.ReactNode }) {
           </Link>
         )}
       </nav>
-
+ 
       {/* User profile */}
       <div style={{ borderTop:`1px solid ${T.border}`, padding:'8px 8px 12px' }}>
         <div style={{ position:'relative' }}>
@@ -156,7 +158,7 @@ export default function ESSLayout({ children }: { children: React.ReactNode }) {
             </div>
             <ChevronDown size={12} style={{ color:T.ink4 }} />
           </button>
-
+ 
           {userMenu && (
             <>
               <div style={{ position:'fixed',inset:0,zIndex:90 }} onClick={()=>setUserMenu(false)} />
@@ -179,15 +181,15 @@ export default function ESSLayout({ children }: { children: React.ReactNode }) {
       </div>
     </>
   );
-
+ 
   return (
     <div style={{ display:'flex', height:'100vh', overflow:'hidden', background:T.bg, fontFamily:'-apple-system,BlinkMacSystemFont,"SF Pro Text","Helvetica Neue",Arial,sans-serif' }}>
-
+ 
       {/* ── Desktop sidebar ─────────────────────────── */}
       <aside className="ess-sidebar" style={{ width:232, flexShrink:0, background:T.sidebar, borderRight:`1px solid ${T.border}`, display:'flex', flexDirection:'column', overflowY:'auto', overflowX:'hidden' }}>
         <SidebarContent />
       </aside>
-
+ 
       {/* ── Mobile sidebar overlay ──────────────────── */}
       {mobileMenu && (
         <>
@@ -202,10 +204,10 @@ export default function ESSLayout({ children }: { children: React.ReactNode }) {
           </aside>
         </>
       )}
-
+ 
       {/* ── Main area ──────────────────────────────── */}
       <div style={{ flex:1, display:'flex', flexDirection:'column', overflow:'hidden', minWidth:0 }}>
-
+ 
         {/* Header */}
         <header className="ess-header" style={{ height:52, background:T.headerBg, backdropFilter:'blur(20px)', WebkitBackdropFilter:'blur(20px)', borderBottom:`1px solid ${T.headerBorder}`, display:'flex', alignItems:'center', padding:'0 20px', flexShrink:0, gap:12 }}>
           {/* Mobile menu button */}
@@ -219,11 +221,11 @@ export default function ESSLayout({ children }: { children: React.ReactNode }) {
             className="mobile-only">
             <Menu size={20} />
           </button>
-
+ 
           <span style={{ fontSize:14, fontWeight:500, color:T.contentInk2 }}>
             {NAV.find(n=>n.href===pathname)?.label || 'Employee Portal'}
           </span>
-
+ 
           <div style={{ marginLeft:'auto', display:'flex', alignItems:'center', gap:8 }}>
             <button onClick={()=>setDark(d=>!d)} title={dark?'Light mode':'Dark mode'}
               style={{ width:32,height:32,border:`1px solid ${T.headerBorder}`,background:dark?'rgba(255,255,255,.08)':'#fff',borderRadius:8,display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer',color:dark?'#f2f2f7':'#48484a',flexShrink:0 }}
@@ -236,7 +238,7 @@ export default function ESSLayout({ children }: { children: React.ReactNode }) {
             </button>
           </div>
         </header>
-
+ 
         {/* Page content */}
         <div style={{ flex:1, overflowY:'auto' }}>
           <div className="ess-content" style={{ padding:'24px 28px 80px' }}>
@@ -244,7 +246,7 @@ export default function ESSLayout({ children }: { children: React.ReactNode }) {
           </div>
         </div>
       </div>
-
+ 
       {/* ── Bottom tab nav (mobile only) ─────────────── */}
       <nav className="ess-bottom-nav" style={{
         position:'fixed', bottom:0, left:0, right:0,
