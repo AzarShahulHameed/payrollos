@@ -22,4 +22,14 @@ export class SettingsController {
   @Post('users/invite')   inviteUser(@Request() req, @Body() dto: InviteUserDto)                     { return this.svc.inviteUser(req.user.orgId, dto); }
   @Patch('users/:id/role') updateRole(@Request() req, @Param('id') id: string, @Body() dto: any) { return this.svc.updateUserRole(req.user.orgId, id, dto.role); }
   @Delete('users/:id')     removeUser(@Request() req, @Param('id') id: string)                   { return this.svc.removeUser(req.user.orgId, id); }
+
+  // ── OPE Types ────────────────────────────────────────────
+  @Get('ope-types')    getOpeTypes(@Request() req: any) { return this.svc.getOpeTypes(req.user.orgId); }
+  @Post('ope-types')   createOpeType(@Request() req: any, @Body() dto: any) { return this.svc.createOpeType(req.user.orgId, dto); }
+  @Patch('ope-types/:id') updateOpeType(@Request() req: any, @Param('id') id: string, @Body() dto: any) { return this.svc.updateOpeType(req.user.orgId, id, dto); }
+  @Delete('ope-types/:id') deleteOpeType(@Request() req: any, @Param('id') id: string) { return this.svc.deleteOpeType(req.user.orgId, id); }
+
+  // ── Branch geo ────────────────────────────────────────────
+  @Patch('branches/:id/geo') updateBranchGeo(@Request() req: any, @Param('id') id: string, @Body() dto: any) { return this.svc.updateBranchGeo(req.user.orgId, id, dto); }
+
 }

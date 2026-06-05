@@ -187,4 +187,58 @@ export class SettingsService {
     return this.prisma.user.delete({ where: { id: userId } });
   }
 
+
+  // ── OPE Types ────────────────────────────────────────────
+  async getOpeTypes(orgId: string) {
+    return (this.prisma as any).opeType.findMany({
+      where: { organizationId: orgId },
+      orderBy: { sortOrder: 'asc' },
+    });
+  }
+
+  async createOpeType(orgId: string, dto: any) {
+    const count = await (this.prisma as any).opeType.count({ where: { organizationId: orgId } });
+    return (this.prisma as any).opeType.create({
+      data: {
+        organizationId: orgId,
+        name:         dto.name,
+        amountType:   dto.amountType || 'FIXED',
+        fixedAmount:  dto.fixedAmount || null,
+        billRequired: dto.billRequired || false,
+        active:       true,
+        sortOrder:    count,
+      },
+    });
+  }
+
+  async updateOpeType(orgId: string, id: string, dto: any) {
+    return (this.prisma as any).opeType.update({
+      where: { id },
+      data: {
+        name:         dto.name,
+        amountType:   dto.amountType,
+        fixedAmount:  dto.fixedAmount,
+        billRequired: dto.billRequired,
+        active:       dto.active,
+      },
+    });
+  }
+
+  async deleteOpeType(orgId: string, id: string) {
+    return (this.prisma as any).opeType.delete({ where: { id } });
+  }
+
+  // ── Branch geo settings ──────────────────────────────────
+  async updateBranchGeo(orgId: string, branchId: string, dto: any) {
+    return this.prisma.branch.update({
+      where: { id: branchId },
+      data: {
+        latitude:     dto.latitude,
+        longitude:    dto.longitude,
+        radiusMetres: dto.radiusMetres || 100,
+        allowedIps:   dto.allowedIps || null,
+      },
+    });
+  }
+
 }

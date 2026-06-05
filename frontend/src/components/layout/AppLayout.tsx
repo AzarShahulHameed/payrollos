@@ -12,7 +12,7 @@ import {
 import { useAuthStore, useRegionStore } from '@/store/auth.store';
 import { authApi, api } from '@/lib/api';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
- 
+
 // ── Nav structure ──────────────────────────────────────────────
 const NAV: {
   id: string;
@@ -63,29 +63,29 @@ const NAV: {
   { id:'settings', label:'Settings', icon: Settings, href:'/settings/organization' },
   { id:'support',  label:'Support',  icon: LifeBuoy, href:'/support' },
 ];
- 
+
 const AV = ['#0a84ff','#28a745','#ff9500','#af52de','#ff375f','#30b0c7'];
 const avColor  = (n?: string) => AV[(n?.charCodeAt(0)||0) % AV.length];
 const initials = (name?: string) => name?.split(' ').map(w=>w[0]).slice(0,2).join('').toUpperCase() || 'U';
 const MONTHS_S = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
- 
+
 // ── Global Cmd+K search ────────────────────────────────────────
 function GlobalSearch() {
   const [open, setOpen]   = useState(false);
   const [q, setQ]         = useState('');
   const router            = useRouter();
   const inputRef          = useRef<HTMLInputElement>(null);
- 
+
   const { data: results } = useQuery({
     queryKey: ['global-search', q],
     queryFn:  () => api.get('/search', { params: { q } }).then(r => r.data),
     enabled:  q.length >= 2,
     staleTime: 5000,
   });
- 
+
   const openSearch  = useCallback(() => { setOpen(true);  setTimeout(() => inputRef.current?.focus(), 10); }, []);
   const closeSearch = useCallback(() => { setOpen(false); setQ(''); }, []);
- 
+
   useEffect(() => {
     const h = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === 'k') { e.preventDefault(); openSearch(); }
@@ -94,12 +94,12 @@ function GlobalSearch() {
     window.addEventListener('keydown', h);
     return () => window.removeEventListener('keydown', h);
   }, [open, openSearch, closeSearch]);
- 
+
   const go = (href: string) => { closeSearch(); router.push(href); };
   const emps    = (results as any)?.employees || [];
   const slips   = (results as any)?.payslips  || [];
   const payruns = (results as any)?.payruns   || [];
- 
+
   return (
     <>
       <div role="button" tabIndex={0} onClick={openSearch} onKeyDown={e => e.key==='Enter' && openSearch()}
@@ -110,7 +110,7 @@ function GlobalSearch() {
           <kbd style={{ fontSize:10, background:'rgba(0,0,0,.08)', padding:'2px 6px', borderRadius:4, fontFamily:'inherit' }}>⌘K</kbd>
         </div>
       </div>
- 
+
       {open && (
         <div style={{ position:'fixed', inset:0, zIndex:9999 }}>
           <div style={{ position:'absolute', inset:0, background:'rgba(0,0,0,.45)', backdropFilter:'blur(4px)' }} onClick={closeSearch} />
@@ -146,7 +146,7 @@ function GlobalSearch() {
     </>
   );
 }
- 
+
 // ── Notification bell ──────────────────────────────────────────
 function NotificationBell() {
   const [open, setOpen]   = useState(false);
@@ -154,25 +154,25 @@ function NotificationBell() {
   const qc = useQueryClient();
   const { user } = useAuthStore();
   const socketRef = useRef<any>(null);
- 
+
   const { data: notifs = [] } = useQuery({ queryKey:['notifications'], queryFn:()=>api.get('/notifications').then(r=>r.data), refetchInterval:30000 });
   const { data: unreadData }  = useQuery({ queryKey:['notif-count'],   queryFn:()=>api.get('/notifications/unread').then(r=>r.data), refetchInterval:15000 });
   const readAllMut = useMutation({ mutationFn:()=>api.patch('/notifications/read-all').then(r=>r.data), onSuccess:()=>{ qc.invalidateQueries({queryKey:['notifications']}); qc.invalidateQueries({queryKey:['notif-count']}); } });
   const unread = (unreadData as any)?.count || 0;
   const router = useRouter();
- 
+
   const showToast = useCallback((notif: any) => {
     const id = Date.now();
     setToasts(p => [...p, { ...notif, toastId: id }]);
     setTimeout(() => setToasts(p => p.filter(t => t.toastId !== id)), 5000);
   }, []);
- 
+
   // WebSocket connection
   useEffect(() => {
     if (!user) return;
     const token = JSON.parse(localStorage.getItem('payrollos-auth')||'{}')?.state?.accessToken;
     if (!token) return;
- 
+
     import('socket.io-client').then(({ io }) => {
       const apiUrl = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api/v1').replace('/api/v1', '');
       const socket = io(apiUrl + '/notifications', {
@@ -181,7 +181,7 @@ function NotificationBell() {
         reconnection: true,
         reconnectionDelay: 2000,
       });
- 
+
       socket.on('connect', () => console.log('[WS] Connected'));
       socket.on('notification', (notif: any) => {
         // Show toast popup
@@ -191,15 +191,15 @@ function NotificationBell() {
         qc.invalidateQueries({ queryKey: ['notif-count'] });
       });
       socket.on('disconnect', () => console.log('[WS] Disconnected'));
- 
+
       socketRef.current = socket;
     }).catch(() => {});
- 
+
     return () => { socketRef.current?.disconnect(); };
   }, [user]);
- 
+
   const TOAST_COLORS: Record<string,string> = { SUCCESS:'#28a745', INFO:'#0a84ff', ACTION:'#ff9500', WARNING:'#d83933' };
- 
+
   return (
     <>
       {/* Toast popups — appear top-right */}
@@ -220,7 +220,7 @@ function NotificationBell() {
           </div>
         ))}
       </div>
- 
+
     <div style={{ position:'relative' }}>
       <button onClick={() => setOpen(v=>!v)}
         style={{ width:34,height:34,border:'none',background:'transparent',borderRadius:9,display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer',color:'#6e6e73',position:'relative',transition:'background .1s' }}
@@ -260,7 +260,7 @@ function NotificationBell() {
     </>
   );
 }
- 
+
 // ── Main layout ────────────────────────────────────────────────
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -274,17 +274,17 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     const saved = localStorage.getItem('payrollos-theme');
     return saved ? saved === 'dark' : window.matchMedia('(prefers-color-scheme: dark)').matches;
   });
- 
+
   // Track which nav sections are expanded
   const defaultOpen = NAV.filter(n => n.children?.some(c => pathname.startsWith(c.href))).map(n => n.id);
   const [expanded, setExpanded] = useState<string[]>(defaultOpen.length ? defaultOpen : ['payroll']);
- 
+
   const toggle = (id: string) => setExpanded(prev => prev.includes(id) ? prev.filter(x=>x!==id) : [...prev, id]);
- 
+
   useEffect(() => { setHydrated(true); }, []);
   useEffect(() => { document.documentElement.setAttribute('data-theme', dark?'dark':'light'); localStorage.setItem('payrollos-theme', dark?'dark':'light'); }, [dark]);
   useEffect(() => { if (hydrated && !isAuthenticated) router.replace('/login'); }, [hydrated, isAuthenticated]);
- 
+
   // Refresh user from DB on mount — ensures photoUrl and org changes persist across devices
   useEffect(() => {
     if (!hydrated || !isAuthenticated) return;
@@ -294,10 +294,10 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     }).catch(() => {});
   }, [hydrated, isAuthenticated]);
   if (!hydrated || !isAuthenticated) return null;
- 
+
   const userName = user?.name || `${user?.firstName||''} ${user?.lastName||''}`.trim();
   const color    = avColor(userName);
- 
+
   // Theme tokens
   const T = {
     sidebar:     dark ? '#111113' : '#1a1f2e',
@@ -320,20 +320,20 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     contentInk2: dark ? '#aeaeb2' : '#48484a',
     contentBorder: dark ? '#3a3a3c' : '#e3e3e6',
   };
- 
+
   const handleLogout = async () => { try { await authApi.logout(); } catch {} logout(); router.replace('/login'); };
- 
+
   return (
     <div style={{ display:'flex', height:'100vh', overflow:'hidden', background:T.bg, fontFamily:'-apple-system,BlinkMacSystemFont,"SF Pro Text","Helvetica Neue",Arial,sans-serif' }}>
- 
+
       {/* ── Sidebar ─────────────────────────────────────────── */}
       <aside style={{ width:232, flexShrink:0, background:T.sidebar, borderRight:`1px solid ${T.border}`, display:'flex', flexDirection:'column', overflowY:'auto', overflowX:'hidden' }}>
- 
+
         {/* Brand header — logo only */}
         <div style={{ padding:'14px 14px 14px', borderBottom:`1px solid ${T.border}`, display:'flex', justifyContent:'center' }}>
           <div style={{ width:38,height:38,borderRadius:11,background:'linear-gradient(145deg,#0a84ff,#0055cc)',display:'grid',placeItems:'center',color:'#fff',fontWeight:800,fontSize:19,boxShadow:'0 2px 8px rgba(10,132,255,.35)' }}>P</div>
         </div>
- 
+
         {/* Nav */}
         <nav style={{ flex:1, padding:'4px 8px' }}>
           {NAV.map(item => {
@@ -341,7 +341,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             const isOpen      = expanded.includes(item.id);
             const hasChildren = !!item.children;
             const Icon        = item.icon;
- 
+
             // ── Single link (no children) ─────────────────
             if (!hasChildren && item.href) {
               return (
@@ -356,7 +356,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                 </Link>
               );
             }
- 
+
             // ── Section with children ──────────────────────
             return (
               <div key={item.id} style={{ marginBottom:2 }}>
@@ -370,7 +370,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                     <ChevronRight size={13} style={{ color:T.ink4 }} />
                   </span>
                 </button>
- 
+
                 {/* Children — animate open/close */}
                 {isOpen && (
                   <div style={{ marginLeft:14, paddingLeft:12, borderLeft:`1.5px solid ${T.border}`, marginBottom:4 }}>
@@ -395,11 +395,11 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             );
           })}
         </nav>
- 
+
         {/* Bottom actions */}
         <div style={{ borderTop:`1px solid ${T.border}`, padding:'8px 8px 12px' }}>
- 
- 
+
+
           {/* User profile */}
           <div style={{ position:'relative' }}>
             <button onClick={()=>setUserMenu(v=>!v)}
@@ -417,7 +417,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
               </div>
               <ChevronDown size={12} style={{ color:T.ink4 }} />
             </button>
- 
+
             {userMenu && (
               <>
                 <div style={{ position:'fixed',inset:0,zIndex:90 }} onClick={()=>setUserMenu(false)} />
@@ -457,10 +457,10 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           </div>
         </div>
       </aside>
- 
+
       {/* ── Main area ──────────────────────────────────────── */}
       <div style={{ flex:1, display:'flex', flexDirection:'column', overflow:'hidden', minWidth:0 }}>
- 
+
         {/* Top header */}
         <header style={{ height:52,background:T.headerBg,backdropFilter:'saturate(180%) blur(20px)',borderBottom:`1px solid ${T.headerBorder}`,display:'flex',alignItems:'center',padding:'0 24px',gap:16,flexShrink:0,zIndex:10 }}>
           <GlobalSearch />
@@ -479,7 +479,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             <NotificationBell />
           </div>
         </header>
- 
+
         {/* Page content */}
         <main style={{ flex:1, overflowY:'auto', background:T.bg }}>
           <div style={{ padding:'28px 32px 64px', maxWidth:1200, color: dark ? '#f2f2f7' : '#1d1d1f' }}>
@@ -490,4 +490,3 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     </div>
   );
 }
- 

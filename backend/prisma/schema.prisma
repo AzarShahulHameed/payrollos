@@ -108,6 +108,7 @@ model Organization {
   notifications   Notification[]
   bonuses         Bonus[]
   branches        Branch[]
+  opeTypes        OpeType[]
 }
 
 model User {
@@ -494,6 +495,13 @@ model Attendance {
   status         AttendanceStatus @default(PRESENT)
   notes          String?
   source         String   @default("MANUAL")
+  locationType   String?  // OFFICE | REMOTE | HOME
+  latitude       Float?
+  longitude      Float?
+  wifiIp         String?
+  geoValidated   Boolean? @default(false)
+  ipValidated    Boolean? @default(false)
+  opeEntries     OpeEntry[]
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
@@ -620,4 +628,31 @@ model Branch {
   isHQ           Boolean      @default(false)
   createdAt      DateTime     @default(now())
   employees      Employee[]
+}
+
+model OpeType {
+  id             String     @id @default(uuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  name           String
+  amountType     String     @default("FIXED") // FIXED | ACTUAL
+  fixedAmount    Float?
+  billRequired   Boolean    @default(false)
+  active         Boolean    @default(true)
+  sortOrder      Int        @default(0)
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
+  entries        OpeEntry[]
+}
+
+model OpeEntry {
+  id             String     @id @default(uuid())
+  attendanceId   String
+  attendance     Attendance @relation(fields: [attendanceId], references: [id])
+  opeTypeId      String
+  opeType        OpeType    @relation(fields: [opeTypeId], references: [id])
+  amount         Float
+  billUrl        String?
+  remarks        String?
+  createdAt      DateTime   @default(now())
 }
