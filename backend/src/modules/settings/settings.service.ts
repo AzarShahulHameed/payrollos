@@ -2,11 +2,11 @@ import { Injectable, NotFoundException, BadRequestException } from '@nestjs/comm
 import { PrismaService } from '../../common/prisma/prisma.module';
 import { EmailService } from '../email/email.service';
 import * as bcrypt from 'bcryptjs';
-
+ 
 @Injectable()
 export class SettingsService {
   constructor(private prisma: PrismaService, private email: EmailService) {}
-
+ 
   async getSettings(orgId: string) {
     let settings = await this.prisma.payrollSettings.findUnique({
       where: { organizationId: orgId },
@@ -52,7 +52,7 @@ export class SettingsService {
     }
     return settings;
   }
-
+ 
   async updateSettings(orgId: string, dto: any) {
     // Strip any fields not in PayrollSettings schema
     const allowed = [
@@ -75,11 +75,11 @@ export class SettingsService {
       update: safe,
     });
   }
-
+ 
   async getOrganization(orgId: string) {
     return this.prisma.organization.findUnique({ where: { id: orgId } });
   }
-
+ 
   async updateOrganization(orgId: string, dto: any) {
     // Only update known Organization fields — prevents Prisma P2009 on extra fields
     const { name, email, phone, address, website, taxId, industry, logoUrl } = dto;
@@ -97,7 +97,7 @@ export class SettingsService {
       },
     });
   }
-
+ 
   async getDepartments(orgId: string) {
     return this.prisma.department.findMany({
       where: { organizationId: orgId },
@@ -105,7 +105,7 @@ export class SettingsService {
       orderBy: { name: 'asc' },
     });
   }
-
+ 
   async createDepartment(orgId: string, dto: any) {
     if (!dto.name?.trim()) throw new BadRequestException('Department name is required');
     // Check for duplicate
@@ -116,7 +116,7 @@ export class SettingsService {
       include: { _count: { select: { employees: true } } },
     });
   }
-
+ 
   async updateDepartment(orgId: string, id: string, dto: any) {
     const dept = await this.prisma.department.findFirst({ where: { id, organizationId: orgId } });
     if (!dept) throw new NotFoundException('Department not found');
@@ -127,7 +127,7 @@ export class SettingsService {
       include: { _count: { select: { employees: true } } },
     });
   }
-
+ 
   async deleteDepartment(orgId: string, id: string) {
     const dept = await this.prisma.department.findFirst({
       where: { id, organizationId: orgId },
@@ -138,28 +138,28 @@ export class SettingsService {
       throw new BadRequestException('Cannot delete a department that has employees. Reassign employees first.');
     return this.prisma.department.delete({ where: { id } });
   }
-
+ 
   async getUsers(orgId: string) {
     return this.prisma.user.findMany({
       where: { organizationId: orgId },
       select: { id: true, email: true, firstName: true, lastName: true, role: true, createdAt: true, lastLoginAt: true },
     });
   }
-
+ 
   async inviteUser(orgId: string, dto: any) {
     const org = await this.prisma.organization.findUnique({ where: { id: orgId }, select: { name: true } });
-
+ 
     // Generate secure temp password
     const tempPassword = Array.from({ length: 10 }, () =>
       'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789'[Math.floor(Math.random() * 56)]
     ).join('');
     const passwordHash = await bcrypt.hash(tempPassword, 10);
-
+ 
     const user = await this.prisma.user.create({
       data: { ...dto, organizationId: orgId, passwordHash, mustChangePassword: true },
       select: { id: true, email: true, firstName: true, lastName: true, role: true },
     });
-
+ 
     // Send professional welcome email
     const appUrl = process.env.APP_URL || 'http://localhost:3000';
     await this.email.sendWelcome({
@@ -169,16 +169,16 @@ export class SettingsService {
       tempPassword,
       loginUrl:  `${appUrl}/login`,
     }).catch(e => console.error('Welcome email failed:', e.message));
-
+ 
     return user;
   }
-
+ 
   async updateUserRole(orgId: string, userId: string, role: string) {
     const validRoles = ['SUPER_ADMIN','ADMIN','HR','MANAGER','ACCOUNTANT','EMPLOYEE'];
     if (!validRoles.includes(role)) throw new Error('Invalid role');
     return this.prisma.user.update({ where: { id: userId, organizationId: orgId }, data: { role: role as any } });
   }
-
+ 
   async removeUser(orgId: string, userId: string) {
     // Don't allow removing yourself or last admin
     const user = await this.prisma.user.findFirst({ where: { id: userId, organizationId: orgId } });
@@ -186,8 +186,8 @@ export class SettingsService {
     if (user.role === 'SUPER_ADMIN') throw new Error('Cannot remove Super Admin');
     return this.prisma.user.delete({ where: { id: userId } });
   }
-
-
+ 
+ 
   // ── OPE Types ────────────────────────────────────────────
   async getOpeTypes(orgId: string) {
     return (this.prisma as any).opeType.findMany({
@@ -195,7 +195,7 @@ export class SettingsService {
       orderBy: { sortOrder: 'asc' },
     });
   }
-
+ 
   async createOpeType(orgId: string, dto: any) {
     const count = await (this.prisma as any).opeType.count({ where: { organizationId: orgId } });
     return (this.prisma as any).opeType.create({
@@ -210,7 +210,7 @@ export class SettingsService {
       },
     });
   }
-
+ 
   async updateOpeType(orgId: string, id: string, dto: any) {
     return (this.prisma as any).opeType.update({
       where: { id },
@@ -223,14 +223,14 @@ export class SettingsService {
       },
     });
   }
-
+ 
   async deleteOpeType(orgId: string, id: string) {
     return (this.prisma as any).opeType.delete({ where: { id } });
   }
-
+ 
   // ── Branch geo settings ──────────────────────────────────
   async updateBranchGeo(orgId: string, branchId: string, dto: any) {
-    return this.prisma.branch.update({
+    return (this.prisma.branch as any).update({
       where: { id: branchId },
       data: {
         latitude:     dto.latitude,
@@ -240,5 +240,5 @@ export class SettingsService {
       },
     });
   }
-
+ 
 }
